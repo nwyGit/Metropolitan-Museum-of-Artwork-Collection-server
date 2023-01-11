@@ -5,6 +5,8 @@ const exp = require("constants");
 const dotenv = require("dotenv").config();
 const app = express();
 const HTTP_PORT = process.env.PORT || 8080;
+const MoviesDB = require("./modules/mongoDB.js");
+const db = new MoviesDB();
 
 // middleware
 
@@ -23,6 +25,12 @@ app.use((req, res) => {
 });
 
 // Start listening requests
-app.listen(HTTP_PORT, () => {
-	console.log("Ready to handle request on port: " + HTTP_PORT);
-});
+db.initialize(process.env.MONGODB_CONN_STRING)
+	.then(() => {
+		app.listen(HTTP_PORT, () => {
+			console.log(`server listening on: ${HTTP_PORT}`);
+		});
+	})
+	.catch((err) => {
+		console.log(err);
+	});
