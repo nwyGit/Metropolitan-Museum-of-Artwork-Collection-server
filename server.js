@@ -1,3 +1,13 @@
+/*********************************************************************************
+ *  WEB422 – Assignment 1
+ *  I declare that this assignment is my own work in accordance with Seneca  Academic Policy.
+ *  No part of this assignment has been copied manually or electronically from any other source
+ *  (including web sites) or distributed to other students.
+ *
+ *  Name: Wai Yan Ng Student ID: 149637217 Date: 11 Jan 2023
+ *  Cyclic Link: _______________________________________________________________
+ *********************************************************************************/
+
 const express = require("express");
 const path = require("path");
 const cors = require("cors");
@@ -14,12 +24,72 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
-// Get all
-app.get("/", (req, res) => {
-	res.json({ message: "API listening" });
+// Create one
+app.post("/api/movies", (req, res) => {
+	db.addNewMovie(req.body)
+		.then((newObj) => {
+			res.status(201).json(newObj);
+		})
+		.catch((err) => {
+			res.status(500).json({ message: err });
+		});
 });
 
-// Resource not found
+// Get all
+app.get("/api/movies", (req, res) => {
+	db.getAllMovies(req.query.page, req.query.perPage, req.query.title)
+		.then((results) => {
+			if (results.length() > 0) {
+				res.json(results);
+			} else {
+				res.status(204).json({ message: "No data found" });
+			}
+		})
+		.catch((err) => {
+			res.status(500).json({ message: err });
+		});
+});
+
+// Get one
+app.get("/api/movies/:id", (req, res) => {
+	db.getMovieById(req.params.id)
+		.then((result) => res.json({ result }))
+		.catch((err) => {
+			res.status(204).send(err);
+		});
+});
+
+// Update one
+app.put("/api/movies:id", (req, res) => {
+	db.updateMovieById(req.body, req.params.id)
+		.then(() => {
+			res.json({
+				message: `Object with ID ${req.params.id} updated successfully`,
+			});
+		})
+		.catch((err) => {
+			res.status(500).json({
+				message: err,
+			});
+		});
+});
+
+// Delete one
+app.delete("/api/movies:id", (req, res) => {
+	db.deleteMovieById(req.params.id)
+		.then(() => {
+			res.json({
+				message: `Object with ID ${req.params.id} deleted successfully`,
+			});
+		})
+		.catch((err) => {
+			res.status(500).json({
+				message: err,
+			});
+		});
+});
+
+// Resource not found / Exception routes
 app.use((req, res) => {
 	res.status(404).send("Resource not found");
 });
