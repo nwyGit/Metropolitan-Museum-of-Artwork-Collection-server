@@ -19,7 +19,6 @@ const MoviesDB = require("./modules/mongoDB.js");
 const db = new MoviesDB();
 
 // middleware
-
 app.use(cors());
 app.use(express.json());
 
@@ -47,11 +46,7 @@ app.get("/api/movies", (req, res) => {
 		req.query.title
 	)
 		.then((results) => {
-			if (results.length > 0) {
-				res.json(results);
-			} else {
-				res.status(204).end();
-			}
+			res.json(results);
 		})
 		.catch((err) => {
 			res.status(500).json({ message: err.message });
@@ -60,26 +55,26 @@ app.get("/api/movies", (req, res) => {
 
 // Get one
 app.get("/api/movies/:id", (req, res) => {
-	db.getMovieById(req.params.id).then((result) => {
-		if (result !== null) {
+	db.getMovieById(req.params.id)
+		.then((result) => {
 			res.json(result);
-		} else {
-			res.status(204).end();
-		}
-	});
+		})
+		.catch(() => {
+			res.status(500).json({
+				message: `Failed to find the object with ID ${req.params.id}`,
+			});
+		});
 });
 
 // Update one
 app.put("/api/movies/:id", (req, res) => {
 	db.updateMovieById(req.body, req.params.id)
 		.then(() => {
-			res.json({
-				message: `Object with ID ${req.params.id} updated successfully`,
-			});
+			res.json(db.getMovieById(rep.params.id));
 		})
 		.catch(() => {
 			res.status(500).json({
-				message: `Failed to update object with ID ${req.params.id}`,
+				message: `Failed to update the object with ID ${req.params.id}`,
 			});
 		});
 });
@@ -87,18 +82,12 @@ app.put("/api/movies/:id", (req, res) => {
 // Delete one
 app.delete("/api/movies/:id", (req, res) => {
 	db.deleteMovieById(req.params.id)
-		.then((result) => {
-			if (result.deletedCount === 1) {
-				res.json({
-					message: `Object with ID ${req.params.id} deleted successfully`,
-				});
-			} else {
-				res.status(204).end();
-			}
+		.then(() => {
+			res.status(204).end();
 		})
 		.catch(() => {
 			res.status(500).json({
-				message: `Failed to delete object with ID ${req.params.id}`,
+				message: `Failed to delete the object with ID ${req.params.id}`,
 			});
 		});
 });
