@@ -5,7 +5,7 @@
  *  (including web sites) or distributed to other students.
  *
  *  Name: Wai Yan Ng Student ID: 149637217 Date: 11 Jan 2023
- *  Cyclic Link: _______________________________________________________________
+ *  Cyclic Link: https://itchy-slippers-clam.cyclic.app/
  *********************************************************************************/
 
 const express = require("express");
@@ -24,67 +24,81 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+app.get("/", (req, res) => {
+	res.json({ message: "API Listening" });
+});
+
 // Create one
 app.post("/api/movies", (req, res) => {
 	db.addNewMovie(req.body)
 		.then((newObj) => {
 			res.status(201).json(newObj);
 		})
-		.catch((err) => {
-			res.status(500).json({ message: err });
+		.catch(() => {
+			res.status(500).json({ message: "Failed to create an object" });
 		});
 });
 
 // Get all
 app.get("/api/movies", (req, res) => {
-	db.getAllMovies(req.query.page, req.query.perPage, req.query.title)
+	db.getAllMovies(
+		parseInt(req.query.page),
+		parseInt(req.query.perPage),
+		req.query.title
+	)
 		.then((results) => {
-			if (results.length() > 0) {
+			if (results.length > 0) {
 				res.json(results);
 			} else {
-				res.status(204).json({ message: "No data found" });
+				res.status(204).end();
 			}
 		})
 		.catch((err) => {
-			res.status(500).json({ message: err });
+			res.status(500).json({ message: err.message });
 		});
 });
 
 // Get one
 app.get("/api/movies/:id", (req, res) => {
-	db.getMovieById(req.params.id)
-		.then((result) => res.json({ result }))
-		.catch((err) => {
-			res.status(204).send(err);
-		});
+	db.getMovieById(req.params.id).then((result) => {
+		if (result !== null) {
+			res.json(result);
+		} else {
+			res.status(204).end();
+		}
+	});
 });
 
 // Update one
-app.put("/api/movies:id", (req, res) => {
+app.put("/api/movies/:id", (req, res) => {
 	db.updateMovieById(req.body, req.params.id)
 		.then(() => {
 			res.json({
 				message: `Object with ID ${req.params.id} updated successfully`,
 			});
 		})
-		.catch((err) => {
+		.catch(() => {
 			res.status(500).json({
-				message: err,
+				message: `Failed to update object with ID ${req.params.id}`,
 			});
 		});
 });
 
 // Delete one
-app.delete("/api/movies:id", (req, res) => {
+app.delete("/api/movies/:id", (req, res) => {
 	db.deleteMovieById(req.params.id)
-		.then(() => {
-			res.json({
-				message: `Object with ID ${req.params.id} deleted successfully`,
-			});
+		.then((result) => {
+			if (result.deletedCount === 1) {
+				res.json({
+					message: `Object with ID ${req.params.id} deleted successfully`,
+				});
+			} else {
+				res.status(204).end();
+			}
 		})
-		.catch((err) => {
+		.catch(() => {
 			res.status(500).json({
-				message: err,
+				message: `Failed to delete object with ID ${req.params.id}`,
 			});
 		});
 });
