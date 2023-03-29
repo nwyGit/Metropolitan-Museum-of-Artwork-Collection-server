@@ -1,109 +1,156 @@
-/*********************************************************************************
- *  WEB422 – Assignment 1
- *  I declare that this assignment is my own work in accordance with Seneca  Academic Policy.
- *  No part of this assignment has been copied manually or electronically from any other source
- *  (including web sites) or distributed to other students.
- *
- *  Name: Wai Yan Ng Student ID: 149637217 Date: 11 Jan 2023
- *  Cyclic Link: https://itchy-slippers-clam.cyclic.app/
- *********************************************************************************/
-
-const express = require("express");
-const path = require("path");
-const cors = require("cors");
-const exp = require("constants");
-const dotenv = require("dotenv").config();
+const express = require('express');
 const app = express();
+const cors = require("cors");
+const dotenv = require("dotenv");
+dotenv.config();
+const userService = require("./user-service.js");
+const jwt = require('jsonwebtoken');
+const passport = require('passport');
+const passportJWT = require('passport-jwt');
+
 const HTTP_PORT = process.env.PORT || 8080;
-const MoviesDB = require("./modules/mongoDB.js");
-const db = new MoviesDB();
 
-// middleware
-app.use(cors());
 app.use(express.json());
+app.use(cors());
 
-// Routes
-app.get("/", (req, res) => {
-	res.json({ message: "API Listening" });
+let ExtractJwt = passportJWT.ExtractJwt;
+let JwtStrategy = passportJWT.Strategy;
+
+let jwtOptions = {};
+jwtOptions.jwtFromRequest = ExtractJwt.fromAuthHeaderWithScheme('jwt');
+
+jwtOptions.secretOrKey = process.env.JWT_SECRET;
+
+let strategy = new JwtStrategy(jwtOptions, function (jwt_payload, next) {
+    console.log('payload received', jwt_payload);
+  
+    if (jwt_payload) {
+      next(null, {
+        _id: jwt_payload._id,
+        userName: jwt_payload.userName,
+        fullName: jwt_payload.fullName,
+        role: jwt_payload.role,
+      });
+    } else {
+      next(null, false);
+    }
+  });
+
+  passport.use(strategy);
+  app.use(passport.initialize());
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+app.post("/api/user/register", (req, res) => {
+    userService.registerUser(req.body)
+    .then((msg) => {
+        res.json({ "message": msg });
+    }).catch((msg) => {
+        res.status(422).json({ "message": msg });
+    });
 });
 
-// Create one
-app.post("/api/movies", (req, res) => {
-	db.addNewMovie(req.body)
-		.then((newObj) => {
-			res.status(201).json(newObj);
-		})
-		.catch(() => {
-			res.status(500).json({ message: "Failed to create an object" });
-		});
+app.post("/api/user/login", (req, res) => {
+    userService.checkUser(req.body)
+    .then((user) => {
+        let payload = {
+            _id: user._id,
+            userName: user.userName,
+            fullName: user.fullName,
+            role: user.role,
+          };
+          
+          let token = jwt.sign(payload, jwtOptions.secretOrKey);
+        res.json({ "message": "login successful", token:token});
+    }).catch(msg => {
+        res.status(422).json({ "message": msg });
+    });
 });
 
-// Get all
-app.get("/api/movies", (req, res) => {
-	db.getAllMovies(
-		parseInt(req.query.page),
-		parseInt(req.query.perPage),
-		req.query.title
-	)
-		.then((results) => {
-			res.json(results);
-		})
-		.catch((err) => {
-			res.status(500).json({ message: err.message });
-		});
+app.get("/api/user/favourites", passport.authenticate('jwt', { session: false }),(req, res) => {
+    userService.getFavourites(req.user._id)
+    .then(data => {
+        res.json(data);
+    }).catch(msg => {
+        res.status(422).json({ error: msg });
+    })
+
 });
 
-// Get one
-app.get("/api/movies/:id", (req, res) => {
-	db.getMovieById(req.params.id)
-		.then((result) => {
-			res.json(result);
-		})
-		.catch(() => {
-			res.status(500).json({
-				message: `Failed to find the object with ID ${req.params.id}`,
-			});
-		});
+app.put("/api/user/favourites/:id", passport.authenticate('jwt', { session: false }),(req, res) => {
+    userService.addFavourite(req.user._id, req.params.id)
+    .then(data => {
+        res.json(data)
+    }).catch(msg => {
+        res.status(422).json({ error: msg });
+    })
 });
 
-// Update one
-app.put("/api/movies/:id", (req, res) => {
-	db.updateMovieById(req.body, req.params.id)
-		.then(() => {
-			res.json(db.getMovieById(rep.params.id));
-		})
-		.catch(() => {
-			res.status(500).json({
-				message: `Failed to update the object with ID ${req.params.id}`,
-			});
-		});
+app.delete("/api/user/favourites/:id",passport.authenticate('jwt', { session: false }), (req, res) => {
+    userService.removeFavourite(req.user._id, req.params.id)
+    .then(data => {
+        res.json(data)
+    }).catch(msg => {
+        res.status(422).json({ error: msg });
+    })
 });
 
-// Delete one
-app.delete("/api/movies/:id", (req, res) => {
-	db.deleteMovieById(req.params.id)
-		.then(() => {
-			res.status(204).end();
-		})
-		.catch(() => {
-			res.status(500).json({
-				message: `Failed to delete the object with ID ${req.params.id}`,
-			});
-		});
+app.get("/api/user/history",passport.authenticate('jwt', { session: false }), (req, res) => {
+    userService.getHistory(req.user._id)
+    .then(data => {
+        res.json(data);
+    }).catch(msg => {
+        res.status(422).json({ error: msg });
+    })
+
 });
 
-// Resource not found / Exception routes
-app.use((req, res) => {
-	res.status(404).send("Resource not found");
+app.put("/api/user/history/:id",passport.authenticate('jwt', { session: false }), (req, res) => {
+    userService.addHistory(req.user._id, req.params.id)
+    .then(data => {
+        res.json(data)
+    }).catch(msg => {
+        res.status(422).json({ error: msg });
+    })
 });
 
-// Start listening requests
-db.initialize(process.env.MONGODB_CONN_STRING)
-	.then(() => {
-		app.listen(HTTP_PORT, () => {
-			console.log(`server listening on: ${HTTP_PORT}`);
-		});
-	})
-	.catch((err) => {
-		console.log(err);
-	});
+app.delete("/api/user/history/:id",passport.authenticate('jwt', { session: false }), (req, res) => {
+    userService.removeHistory(req.user._id, req.params.id)
+    .then(data => {
+        res.json(data)
+    }).catch(msg => {
+        res.status(422).json({ error: msg });
+    })
+});
+
+userService.connect()
+.then(() => {
+    app.listen(HTTP_PORT, () => { console.log("API listening on: " + HTTP_PORT) });
+})
+.catch((err) => {
+    console.log("unable to start the server: " + err);
+    process.exit();
+});
